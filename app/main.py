@@ -14,6 +14,11 @@ STARTED_AT = time.time()
 VALID_SCOPES = {"category", "merchant", "customer", "trigger"}
 
 app = FastAPI(title="Vera Merchant AI Assistant", version=APP_VERSION)
+
+@app.get("/")
+def root():
+    return {"status": "ok", "service": "Vera Merchant AI Assistant", "api": "/v1"}
+
 lock = RLock()
 
 # The judge pushes all context. No seed data is required at runtime.
