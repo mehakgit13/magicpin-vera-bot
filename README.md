@@ -1,32 +1,21 @@
-# Vera — magicpin AI Challenge Submission
+Vera — magicpin AI Challenge Submission
 
-A deterministic, stateful FastAPI implementation of the Vera merchant
-WhatsApp assistant endpoint contract.
+A deterministic, stateful FastAPI implementation of the Vera merchant WhatsApp assistant endpoint contract.
 
-The system composes concise, context-aware merchant interactions using
-category, merchant, trigger, and optional customer context while maintaining
-state across proactive conversations and replies.
-
-## Implemented API
+Implemented API
 
 The application exposes the required Vera bot endpoints:
 
-- `GET /v1/healthz`
-- `GET /v1/metadata`
-- `POST /v1/context`
-- `POST /v1/tick`
-- `POST /v1/reply`
+Method	Endpoint	Purpose
+GET	/v1/healthz	Service health and runtime status
+GET	/v1/metadata	Submission and team metadata
+POST	/v1/context	Store or update runtime context
+POST	/v1/tick	Process triggers and generate actions
+POST	/v1/reply	Continue an existing conversation
+Design
 
-An additional development endpoint is also available:
+The bot maintains four context layers in memory:
 
-- `POST /v1/teardown`
-
-## Design
-
-The bot maintains the four context layers in memory and composes messages
-from the context received at runtime:
-
-```text
 CategoryContext
       +
 MerchantContext
@@ -38,6 +27,7 @@ Optional CustomerContext
 Deterministic Message Composition
       ↓
 Action
+Router Priorities
 
 The router is deterministic and prioritizes:
 
@@ -45,11 +35,10 @@ Trigger relevance
 Category-specific vocabulary and signals
 Merchant-specific facts and performance
 Active merchant offers
-Customer consent and preferences when applicable
+Customer consent and preferences
 A single practical next step
 
-The implementation does not depend on external APIs for message composition
-and does not transmit merchant or customer context outside the application.
+The implementation does not depend on external APIs for message composition.
 
 Context Management
 
@@ -59,61 +48,59 @@ Category context
 Merchant context
 Customer context
 Trigger context
-
-Context versions are handled using the supplied context identifier and
-version number.
+Version Handling
 
 The implementation supports:
 
-Idempotent re-delivery of the same context version
-Rejection of stale lower versions
-Replacement by higher versions
-Atomic context replacement under a lock
-Runtime context injection without requiring a restart
+✅ Idempotent re-delivery of the same context version
+✅ Rejection of stale lower versions
+✅ Replacement by higher versions
+✅ Atomic context replacement
+✅ Runtime context injection without restart
 Conversation Flow
 
-Proactive interactions are initiated through /v1/tick.
+Proactive interactions are initiated through:
+
+POST /v1/tick
 
 For an eligible trigger, the system:
 
-Identifies the relevant merchant and category context.
+Identifies the relevant merchant and category.
 Evaluates the trigger.
-Composes a deterministic merchant-facing message.
+Composes a merchant-facing message.
 Applies suppression rules.
 Creates a unique conversation ID.
 Returns the resulting action.
 
-Subsequent merchant messages are handled through /v1/reply.
+Subsequent merchant messages are handled through:
 
-The reply handler maintains conversation state and returns one of:
+POST /v1/reply
+
+The reply handler returns one of:
 
 send
 wait
 end
 
-This allows a proactive message to continue as a stateful conversation rather
-than being treated as an isolated request.
+This makes the interaction stateful rather than isolated.
 
 Operational Guarantees
-
-The implementation provides the following runtime guarantees:
-
-The same (scope, context_id, version) is treated as a no-op.
-Lower context versions return HTTP 409 with stale_version information.
-Higher context versions replace the stored context atomically.
-/v1/tick limits the number of returned actions to 20.
-Suppression keys prevent duplicate proactive sends.
-New tick actions receive unique conversation IDs.
-/v1/reply maintains conversation state.
-/v1/reply returns only send, wait, or end actions.
-/v1/teardown clears runtime state.
-Merchant and customer context is not persisted to an external database.
+Capability	Implementation
+Context versioning	✅
+Idempotent updates	✅
+Stale-version protection	✅
+Atomic updates	✅
+Trigger suppression	✅
+Unique conversation IDs	✅
+Stateful replies	✅
+Deterministic composition	✅
+Runtime context injection	✅
+Docker support	✅
 Deterministic Composition
 
-Message generation is based on received context rather than fixed responses
-to only the canonical challenge examples.
+Message generation uses the context received at runtime rather than relying only on fixed canonical examples.
 
-The composition layer uses available:
+The composition layer can use:
 
 Merchant identity
 Merchant performance
@@ -121,28 +108,23 @@ Category information
 Peer statistics
 Offers
 Trigger payloads
-Customer preferences and consent where applicable
+Customer preferences
+Customer consent
 Conversation state
 
-This allows the same endpoint contract to process newly injected contexts
-during evaluation.
+This allows the same endpoint contract to process newly injected contexts during evaluation.
 
 Local Development
-
-Create and activate a virtual environment:
-
+1. Create virtual environment
 python -m venv .venv
+2. Activate environment
 .\.venv\Scripts\Activate.ps1
-
-Install dependencies:
-
+3. Install dependencies
 pip install -r requirements.txt
-
-Start the application:
-
+4. Start server
 uvicorn app.main:app --host 0.0.0.0 --port 8080
 
-The local service is then available at:
+The service will be available at:
 
 http://localhost:8080
 Health Check
@@ -151,24 +133,18 @@ Metadata
 Invoke-RestMethod http://localhost:8080/v1/metadata
 Docker
 
-The application is containerized using Python 3.10 and can be built with:
+The application is containerized using Python 3.10.
 
+Build
 docker build -t vera-bot .
-
-Run the container locally:
-
+Run
 docker run --rm -p 8080:8080 vera-bot
 
-The container runs the FastAPI application using Uvicorn and supports the
-platform-provided PORT environment variable for cloud deployment.
+The container supports the platform-provided PORT environment variable for cloud deployment.
 
 Deployment
 
-The application is designed for deployment on a cloud platform that supports
-Docker and provides a public HTTPS endpoint.
-
-The Docker image exposes the FastAPI service on port 8080, while the
-application also supports the platform-provided PORT environment variable.
+The application is designed for deployment on a cloud platform that provides a public HTTPS endpoint.
 
 The deployed service exposes:
 
@@ -177,24 +153,29 @@ GET  /v1/metadata
 POST /v1/context
 POST /v1/tick
 POST /v1/reply
-
-The service metadata can be configured through environment variables such as:
-
+Environment Variables
 TEAM_NAME
 TEAM_MEMBERS
 CONTACT_EMAIL
 SUBMITTED_AT
 Evaluation
 
-The repository includes the provided challenge dataset, example payloads,
-and judge_simulator.py for development and evaluation.
+The repository includes:
 
-The implementation is designed to work with dynamically injected category,
-merchant, customer, and trigger contexts rather than relying exclusively on
-the bundled canonical examples.
+Challenge dataset
+Example payloads
+judge_simulator.py
+API tests
+Docker configuration
 
-The runtime API contract supports incremental context delivery and
-stateful interactions throughout the evaluation flow.
+The implementation supports dynamically injected:
+
+CategoryContext
+MerchantContext
+CustomerContext
+TriggerContext
+
+rather than relying exclusively on bundled examples.
 
 Repository Structure
 magicpin-vera-bot/
@@ -228,47 +209,48 @@ magicpin-vera-bot/
 ├── .env.example
 └── README.md
 Key Characteristics
-Stateful
+🔄 Stateful
 
-Conversation state is maintained across /v1/tick and /v1/reply
-interactions.
+Conversation state is maintained across /v1/tick and /v1/reply.
 
-Deterministic
+🎯 Deterministic
 
-Given the same stored contexts, trigger, and conversation state, the
-composition logic produces deterministic behavior.
+The same stored contexts, trigger, and conversation state produce deterministic behavior.
 
-Context-Aware
+🧠 Context-Aware
 
-Messages are composed from merchant, category, trigger, and optional
-customer information received through the API.
+Messages use merchant, category, trigger, and optional customer information.
 
-Suppression-Aware
+🛡️ Suppression-Aware
 
-Suppression keys prevent repeated proactive messages for the same trigger
-condition.
+Suppression keys prevent duplicate proactive messages.
 
-Version-Aware
+🔢 Version-Aware
 
-Context updates are processed according to their version, preventing stale
-context from overwriting newer information.
+Newer context versions replace older versions while stale updates are rejected.
 
-Containerized
+🐳 Containerized
 
-The complete application can be packaged and deployed as a Docker
-container.
+The complete application can be packaged and deployed as a Docker container.
 
 Privacy and Data Handling
 
-The application keeps merchant, customer, category, and trigger contexts in
-runtime memory.
+The application keeps merchant, customer, category, and trigger contexts in runtime memory.
 
-No external database or third-party API is required for the core message
-composition flow, and merchant/customer context is not transmitted outside
-the application.
+No external database or third-party API is required for the core message composition flow.
+
+Merchant and customer context is not transmitted outside the application.
 
 Project Status
 
-The implementation provides the required Vera API contract together with
-stateful context handling, deterministic message composition, trigger
-suppression, version-aware updates, and Docker-based deployment support.
+The implementation provides the required Vera API contract together with:
+
+Stateful context handling
+Deterministic message composition
+Trigger suppression
+Version-aware context updates
+Stateful conversation replies
+Docker-based deployment support
+Health and metadata endpoints
+
+Ready for public deployment and challenge evaluation.
