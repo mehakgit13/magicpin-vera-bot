@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: mehak-vera-bot
+    runtime: docker
+    plan: free
+    healthCheckPath: /v1/healthz
+    envVars:
+      - key: TEAM_NAME
+        value: Mehak Yadav
+      - key: TEAM_MEMBERS
+        value: Mehak Yadav
+      - key: CONTACT_EMAIL
+        value: mehak.yadav.ug23@nsut.ac.in
+      - key: SUBMITTED_AT
+        value: 2026-09-25T00:00:00Z
